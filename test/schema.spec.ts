@@ -37,7 +37,7 @@ async function readDocument(file: string): Promise<unknown> {
 async function declaresSchema(file: string): Promise<boolean> {
     const contents = await fs.readFile(file, 'utf8');
     return path.extname(file) === '.json'
-        ? /"\$schema"\s*:/.test(contents)
+        ? /\"\$schema\"\s*:/.test(contents)
         : /^\s*\$schema\s*:/m.test(contents);
 }
 
@@ -77,9 +77,10 @@ describe('schema-backed source files', async () => {
     for (const { document, file, reference } of documents) {
         it(path.relative(projectRoot, file), async () => {
             const schemaUri = new URL(reference, pathToFileURL(file)).href;
-            // SchemaStore currently contains some cross-branch `required` keywords.
-            // Keep strict validation enabled while allowing that valid draft-07 pattern.
-            const ajv = new Ajv({ allErrors: true, loadSchema, strict: true, strictRequired: false });
+            // SchemaStore currently contains some cross-branch `required` keywords and
+            // vendor extensions such as `allowTrailingCommas`. Keep data validation
+            // strict while accepting those schema-authoring extensions.
+            const ajv = new Ajv({ allErrors: true, loadSchema, strict: true, strictRequired: false, strictSchema: false });
             addFormats(ajv);
 
             const validate = ajv.getSchema(schemaUri) ?? (await ajv.compileAsync(await loadSchema(schemaUri)));
